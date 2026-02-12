@@ -1,0 +1,12 @@
+  ▄▄▄▄▄▄                        
+█▀██▀▀▀█▄                      
+  ██▄▄▄█▀              ▀▀ ▄    
+  ██▀▀█▄   ▄█▀█▄ ▄██▀█ ██ ████▄
+▄ ██  ██   ██▄█▀ ▀███▄ ██ ██ ██
+▀██▀  ▀██▀▄▀█▄▄▄█▄▄██▀▄██▄██ ▀█
+                                
+                                
+Runtime : read and execute numeric code
+Translator : convert IR to numeric code
+Resolver : resolving label(jump, function, variable) resolution
+Cleaner : elimenate emptyline

@@ -1,0 +1,19 @@
+PUSH 5 #start from 5
+
+<sub>
+PUSH 1
+SUB
+
+DUP
+PUSH 0
+EQUAL
+JUMP_IF_FALSE <sub>
+
+PUSH '\n'
+PUSH 'd'
+PUSH 'n'
+PUSH 'e'
+WRITE
+WRITE
+WRITE
+WRITE
