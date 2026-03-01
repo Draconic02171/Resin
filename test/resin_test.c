@@ -1,9 +1,10 @@
 //Resin Skeletion version
-const int BuildVersion = 63; 
-const char CodeName[] = "spore";
+const int BuildVersion = 173; 
+const char CodeName[] = "Seedling";
 const char StartTime[] = "2026-02-22 20:03:37";
-const char TimeSpent[] = "2026-02-24 21:30:47";
+const char TimeSpent[] = "2026-03-01 19:02:56";
 
+#include <string.h>
 #include <stdlib.h>
 #include <iso646.h>
 #include <stdio.h>
@@ -13,13 +14,24 @@ const char TimeSpent[] = "2026-02-24 21:30:47";
 #define false 0
 #define TypeNull ((void*)0)
 
+#define MAX_STACK_SIZE 15 //test size
+#define MAX_FUNC_SLOT 256 //test size
+#define MAX_FUNCNAME_SIZE 256 //test size
+
 typedef uint8_t usigned8 ;
 typedef uint16_t usigned16 ;
 typedef uint32_t usigned32 ;
 
+#include <unistd.h>  // for usleep
+
 
 //■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-typedef enum {enum_type_null,enum_type_number} Datatype;
+typedef enum {
+    enum_type_null,
+    enum_type_number,
+    enum_type_string,
+    enum_type_function
+} Datatype;
 typedef enum {
 // basic stack operation
     _push,
@@ -50,13 +62,13 @@ typedef enum {
 //function
     _function,
     _call,
-    _end,
+    _return,
 
 //IO
     _read,
     _print,
     _peek,
-    _halt,
+    _halt, //not sure if I need this since _return is enough
 
 //array
     _allocArray,
@@ -74,84 +86,26 @@ typedef struct {
 typedef struct {Opcode Opcode; Value Operand;} Instruction;
 
 typedef struct {
-    int ProgramCounter;
-    int* VariableSlot;
-} FuncFrame;
-
-// typedef struct {
-//     funcCall
-// } ;
+    char Name[100];
+    int ArgsAmout;
+    int VariableAmount;
+} MetaData;
 
 typedef struct {
 
-    Value Stack[10];
+    Value Stack[MAX_STACK_SIZE];
     int StackPointer;
-    int StackSize;
+
+    int CallStackPointer;
+    MetaData FuncSlot[MAX_FUNC_SLOT];
 
     Instruction* Program;
     int ProgramSize;
     int ProgramCounter;
-
+    
     int IsRunning;
 
 } RuntimeEnv;
-
-
-static const char* opcode_to_str(Opcode op) {
-    switch (op) {
-        case _push: return "_push"; 
-        case _pop:  return "_pop";  
-        case _dup:  return "_dup";
-        case _load: return "_load"; 
-        case _store: return "_store";
-        case _add:  return "_add";  
-        case _sub:   return "_sub";  
-        case _mul:  return "_mul";
-        case _div:  return "_div";  
-        case _mod:   return "_mod";
-        case _equal: return "_eq";  
-        case _more:  return "_more";   
-        case _less: return "_less";
-        case _moreOrEqual: return "_moreOrEqual"; 
-        case _lessOrEqual: return "_lessOrEqual";
-        case _jump: return "_jump";  
-        case _jumpIfTrue: return "_jumpIfTrue"; 
-        case _jumpIfFalse: return "_jumpIfFalse";
-        case _print: return "_print"; 
-        case _peek: return "_peek";
-        case _halt: return "_halt";
-        default: return "UNKNOWN_OP";
-    }
-}
-
-/**
- * Logs the VM state including the Opcode name.
- */
-static inline void log_vm_step(const char* filename, int pc, Opcode op, Value* stack, int sp) {
-    FILE* f = fopen(filename, "a");
-    if (!f) return;
-
-    // Header showing PC and the Opcode that just executed
-    fprintf(f, "Step [PC: %03d | Op: %-10s | SP: %d]\n", pc, opcode_to_str(op), sp);
-    fprintf(f, "Stack State:\n");
-
-    if (sp < 0) {
-        fprintf(f, "  (Empty)\n");
-    } else {
-        for (int i = 0; i <= sp; i++) {
-            if (stack[i].type == 1) {
-                fprintf(f, "  [%d]: %lf\n", i, stack[i].as.number);
-            } else if (stack[i].type == 0) {
-                fprintf(f, "  [%d]: NULL\n", i);
-            } else {
-                fprintf(f, "  [%d]: (Other/Pointer Type)\n", i);
-            }
-        }
-    }
-    fprintf(f, "----------------------------------\n");
-    fclose(f);
-}
-
 
 
 //■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
@@ -175,40 +129,236 @@ void jump(RuntimeEnv* VM , Value* value);
 void jumpIfTrue(RuntimeEnv* VM , Value* value);
 void jumpIfFalse(RuntimeEnv* VM , Value* value);
 
+// void PushFuncCall(RuntimeEnv* VM, Value* value);
+// Value PopFuncCall(RuntimeEnv* VM);
+int GetFuncIndexByName(RuntimeEnv* VM , char* String);
+
+void CallFunc(RuntimeEnv* VM, Value* FunctionIndex);
+void FuncBody(RuntimeEnv* VM, Value* FunctionIndex);
+void ReturnFunc(RuntimeEnv* VM, Value* PopCount);
+
 void print_numeric(RuntimeEnv* VM);
 void peek_numeric(RuntimeEnv* VM);
 
 void InitializeRuntime(RuntimeEnv* VM);
-int PauseExecution(RuntimeEnv* VM);
+int PauseExecFuncution(RuntimeEnv* VM);
 int Execute(RuntimeEnv* VM) ;
 
-//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+char* log_btyeCode_to_enum(double value) {
+    switch ((int) value) {
 
+            case _push          : return "push";
+            case _pop           : return "pop";
+            case _dup           : return "dup";
+            case _load          : return "load";
+            case _store         : return "store";
+
+            case _add           : return "add";
+            case _sub           : return "sub"; 
+            case _mul           : return "mul";
+            case _div           : return "div";
+            case _mod           : return "mod";
+
+            case _equal         : return "equal";
+            case _more          : return "more";
+            case _less          : return "less";
+            case _moreOrEqual   : return "moreOrEqual";
+            case _lessOrEqual   : return "lessOrEqual";
+
+            case _jump          : return "jump";
+            case _jumpIfTrue    : return "jumpIfTrue";
+            case _jumpIfFalse   : return "jumpIfFalse";
+            
+            case _function      : return "function";
+            case _call          : return "call";
+            case _return        : return "return";
+            
+            case _read          : return "read";
+            case _print         : return "print";
+            case _peek          : return "peek";
+
+            default             : return "Unknown opcode";
+            
+        }
+}
+
+const char* log_opcode_description(int opcode) {
+    switch (opcode) {
+        case _push          : return "Push immediate value onto the stack";
+        case _pop           : return "Pop the top value off the stack";
+        case _dup           : return "Duplicate the top stack value";
+        case _load          : return "Load a variable onto the stack";
+        case _store         : return "Store top of stack into a variable";
+
+        case _add           : return "Pop two values, push their sum";
+        case _sub           : return "Pop two values, push their difference";
+        case _mul           : return "Pop two values, push their product";
+        case _div           : return "Pop two values, push their quotient";
+        case _mod           : return "Pop two values, push their remainder";
+
+        case _equal         : return "Push 1 if top two values are equal";
+        case _more          : return "Push 1 if second > top";
+        case _less          : return "Push 1 if second < top";
+        case _moreOrEqual   : return "Push 1 if second >= top";
+        case _lessOrEqual   : return "Push 1 if second <= top";
+
+        case _jump          : return "Unconditional jump to address";
+        case _jumpIfTrue    : return "Jump to address if top of stack is truthy";
+        case _jumpIfFalse   : return "Jump to address if top of stack is falsy";
+
+        case _function      : return "Define a function at current position";
+        case _call          : return "Call a function, push return frame";
+        case _return        : return "Return from function, restore frame";
+
+        case _read          : return "Read input from user onto stack";
+        case _print         : return "Pop and print top of stack";
+        case _peek          : return "Print top of stack without popping";
+
+        default             : return "Unknown opcode";
+    }
+}
+
+void log_vm_step(RuntimeEnv* VM) {
+
+    FILE* file = fopen("stack_debug.txt", "w");
+    if (!file) { perror("log_vm_step: fopen"); return; }
+
+    int opcode = VM->Program[VM->ProgramCounter].Opcode;
+    int call_stack_bottom = MAX_STACK_SIZE - VM->CallStackPointer;
+
+    fprintf(file, "=================================================\n");
+    fprintf(file, "PC: %d | Opcode: %d (%s)\n",
+            VM->ProgramCounter, opcode, log_btyeCode_to_enum((double)opcode));
+    fprintf(file, "DESC: %s\n", log_opcode_description(opcode));
+    fprintf(file, "=================================================\n");
+    fprintf(file, "%-6s| %-8s| %-20s| %s\n", "Index", "Type", "Value", "Section");
+    fprintf(file, "-------------------------------------------------\n");
+
+    for (int i = 0; i < MAX_STACK_SIZE; i++) {
+
+        int is_call_region  = (i >= call_stack_bottom);
+        int is_value_region = (i <= VM->StackPointer);
+
+        if (is_call_region) {
+            int call_slot      = (MAX_STACK_SIZE - 1) - i;
+            int frame_index    = call_slot / 2;
+            int slot_in_frame  = call_slot % 2;
+            const char* slot_label = (slot_in_frame == 0) ? "saved PC" : "saved SP";
+
+            const char* type_str =
+                VM->Stack[i].type == enum_type_number ? "num"  :
+                VM->Stack[i].type == enum_type_null   ? "null" : "other";
+
+            fprintf(file, "%-6d| %-8s| %-20.4f| CALL frame[%d] %s\n",
+                i, type_str, VM->Stack[i].as.number, frame_index, slot_label);
+
+        } else if (is_value_region) {
+            const char* type_str =
+                VM->Stack[i].type == enum_type_number   ? "num"  :
+                VM->Stack[i].type == enum_type_string   ? "str"  :
+                VM->Stack[i].type == enum_type_function ? "func" : "null";
+
+            fprintf(file, "%-6d| %-8s| %-20.4f| VALUE\n",
+                i, type_str, VM->Stack[i].as.number);
+
+        } else {
+            int danger = (i > VM->StackPointer && i < call_stack_bottom);
+            fprintf(file, "%-6d| ---- free %s----\n", i, danger ? "" : "");
+        }
+    }
+
+    fprintf(file, "=================================================\n");
+    fprintf(file, "StackPointer    : %d\n",  VM->StackPointer);
+    fprintf(file, "CallStackPointer: %d\n",  VM->CallStackPointer);
+    fprintf(file, "Call stack top  : %d  (index MAX-1 = %d)\n",
+            call_stack_bottom, MAX_STACK_SIZE - 1);
+    fprintf(file, "Free slots      : %d\n",
+            call_stack_bottom - VM->StackPointer - 1);
+    fprintf(file, "=================================================\n");
+
+    fclose(file);
+    usleep(2000000);
+}
+
+
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 
 
 // MAIN FUNCTION
 
+// Instruction program[] = {
+//     // function 0
+//     //main function
+//     {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 0 }},
+//     {.Opcode = _push, .Operand = {.type = enum_type_function, .as.number = 5}},
+//     {.Opcode = _push, .Operand = {.type = enum_type_number, .as.number = 1}},
+//     {.Opcode = _sub, .Operand = {.type = enum_type_null}},
+//     {.Opcode = _dup, .Operand = {.type = enum_type_null}},
+//     {.Opcode = _push, .Operand = {.type = enum_type_number, .as.number = 0}},
+//     {.Opcode = _equal, .Operand = {.type = enum_type_number, .as.number = 0}},
+//     {.Opcode = _jumpIfFalse, .Operand = {.type = enum_type_number, .as.number = 2}},
+//     {.Opcode = _return, .Operand = {.type = enum_type_null}},
+// };
+
 Instruction program[] = {
-    //counter program
-    //start by set init value
-    { .Opcode = _push,          .Operand = { .type = enum_type_number, .as.number = 20.0 } },
 
-    //then push 1 and sub
-    { .Opcode = _push,          .Operand = { .type = enum_type_number, .as.number = 1.0 } },
-    { .Opcode = _sub,           .Operand = { .type = enum_type_null} },
+    /* ── main (FuncSlot 0) ─── PC 0–9 ──────────────────────── */
+    /* 00 */ {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 0}},
+    /* 01 */ {.Opcode = _call,     .Operand = {.type = enum_type_number,   .as.number = 10}}, // → funcA
+    /* 02 */ {.Opcode = _peek,     .Operand = {.type = enum_type_null}},                       // expect: 7
+    /* 03 */ {.Opcode = _pop,      .Operand = {.type = enum_type_null}},
+    /* 04 */ {.Opcode = _call,     .Operand = {.type = enum_type_number,   .as.number = 15}}, // → funcB
+    /* 05 */ {.Opcode = _peek,     .Operand = {.type = enum_type_null}},                       // expect: 20
+    /* 06 */ {.Opcode = _pop,      .Operand = {.type = enum_type_null}},
+    /* 07 */ {.Opcode = _call,     .Operand = {.type = enum_type_number,   .as.number = 20}}, // → funcC
+    /* 08 */ {.Opcode = _peek,     .Operand = {.type = enum_type_null}},                       // expect: 27
+    /* 09 */ {.Opcode = _return,   .Operand = {.type = enum_type_number,   .as.number = 0}},
 
-    //peek
-    { .Opcode = _peek,          .Operand = { .type = enum_type_null} },
+    /* ── funcA (FuncSlot 1) ─── PC 10–14 ── returns 3+4 = 7 ── */
+    /* 10 */ {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 1}},
+    /* 11 */ {.Opcode = _push,     .Operand = {.type = enum_type_number,   .as.number = 3}},
+    /* 12 */ {.Opcode = _push,     .Operand = {.type = enum_type_number,   .as.number = 4}},
+    /* 13 */ {.Opcode = _add,      .Operand = {.type = enum_type_null}},
+    /* 14 */ {.Opcode = _return,   .Operand = {.type = enum_type_number,   .as.number = 1}},
 
-    //dup for compare, push 0 for compare
-    { .Opcode = _dup,           .Operand = { .type = enum_type_null} },
-    { .Opcode = _push,          .Operand = { .type = enum_type_number, .as.number = 0 } },
-    { .Opcode = _more,         .Operand = { .type = enum_type_null} },
+    /* ── funcB (FuncSlot 2) ─── PC 15–19 ── returns 10×2 = 20 ─ */
+    /* 15 */ {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 2}},
+    /* 16 */ {.Opcode = _push,     .Operand = {.type = enum_type_number,   .as.number = 10}},
+    /* 17 */ {.Opcode = _push,     .Operand = {.type = enum_type_number,   .as.number = 2}},
+    /* 18 */ {.Opcode = _mul,      .Operand = {.type = enum_type_null}},
+    /* 19 */ {.Opcode = _return,   .Operand = {.type = enum_type_number,   .as.number = 1}},
 
-    //jump if equal results 0?
-    { .Opcode = _jumpIfTrue,    .Operand = { .type = enum_type_number, .as.number = 1.0 } },
+    /* ── funcC (FuncSlot 3) ─── PC 20–24 ── calls A+B, returns 27 */
+    /* 20 */ {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 3}},
+    /* 21 */ {.Opcode = _call,     .Operand = {.type = enum_type_number,   .as.number = 10}}, // → funcA (7)
+    /* 22 */ {.Opcode = _call,     .Operand = {.type = enum_type_number,   .as.number = 15}}, // → funcB (20)
+    /* 23 */ {.Opcode = _add,      .Operand = {.type = enum_type_null}},                       // 7+20 = 27
+    /* 24 */ {.Opcode = _return,   .Operand = {.type = enum_type_number,   .as.number = 1}},
 };
+
+
+// Instruction program[] = {
+//     // function 0
+//     //random Function
+//     {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 1}},
+//         {.Opcode = _push, .Operand = {.type = enum_type_function, .as.number = 5}},
+//         {.Opcode = _push, .Operand = {.type = enum_type_function, .as.number = 5}},
+//         {.Opcode = _add, .Operand = {.type = enum_type_null}},
+//         {.Opcode = -_call, .Operand = {.type = enum_type_function, .as.number = 1}},
+//         {.Opcode = -_return, .Operand = {.type = enum_type_null}},
+
+//     //function main 
+//     {.Opcode = _function, .Operand = {.type = enum_type_function, .as.number = 0}},
+//         {.Opcode = _push, .Operand = {.type = enum_type_function, .as.number = 5}},
+//         {.Opcode = _push, .Operand = {.type = enum_type_number, .as.number = 1}},
+//         {.Opcode = _sub, .Operand = {.type = enum_type_null}},
+//         {.Opcode = _dup, .Operand = {.type = enum_type_null}},
+//         {.Opcode = _push, .Operand = {.type = enum_type_number, .as.number = 0}},
+//         {.Opcode = _equal, .Operand = {.type = enum_type_number, .as.number = 0}},
+//         {.Opcode = _jumpIfFalse, .Operand = {.type = enum_type_number, .as.number = 2}},
+// };
+
 
 int main(int argc, char* argv[]) {
 
@@ -216,9 +366,30 @@ int main(int argc, char* argv[]) {
     InitializeRuntime(&VirtualMachine);
     
     VirtualMachine.Program = program;
-    VirtualMachine.ProgramSize = 8;
+    VirtualMachine.ProgramSize = sizeof(program) / sizeof(Instruction);
+
+    for (int index = 0; index < MAX_FUNC_SLOT; index ++) {
+        VirtualMachine.FuncSlot[index].VariableAmount = 0;
+    }
+
+    // for (int index = 0; index < VirtualMachine.ProgramSize; index ++) {
+    //     if (VirtualMachine.Program[index].Opcode == _function) {
+    //         VirtualMachine.FuncSlot[(int)VirtualMachine.Program->Operand.as.number].ArgsAmout
+    //     }
+    // }
     
+    //run `_main` first
+    // not practical for now
+    // MainFunc.as.number = (double)GetFuncIndexByName(&VirtualMachine , "_main");
+    
+    Value MainFunc;
+    MainFunc.type = enum_type_number;
+    MainFunc.as.number = 0;
+    
+    CallFunc(&VirtualMachine , &MainFunc);
+    log_vm_step(&VirtualMachine);
     Execute(&VirtualMachine);
+
     
     return 0;
 }
@@ -229,17 +400,24 @@ int main(int argc, char* argv[]) {
 //■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 
 void InitializeRuntime(RuntimeEnv* VM) {
-
     VM->IsRunning = false;
     VM->StackPointer = -1;
     VM->ProgramCounter = 0;
-    VM->StackSize = 256;
-
+    VM->CallStackPointer = 0;
 }
+
+// void MountProgram(RuntimeEnv* VM , Instruction* Program , int TotalProgramLine) {
+//     VM->Program = Program;
+//     VM->ProgramSize = TotalProgramLine;
+
+//     for (int index = 0; index <= TotalProgramLine; index ++) {
+//         // if() ++;
+//     }
+// }
 
 void ExecuteLoop(RuntimeEnv* VM) {
 
-    while (VM->IsRunning == true && VM->ProgramCounter < VM->ProgramSize) {
+    while (VM->IsRunning == true && VM->ProgramCounter < VM->ProgramSize && VM->CallStackPointer > 0) {
 
         int opcode = VM->Program[VM->ProgramCounter].Opcode;
         Value operand = VM->Program[VM->ProgramCounter].Operand;
@@ -267,12 +445,12 @@ void ExecuteLoop(RuntimeEnv* VM) {
             case _lessOrEqual   : lessEqual_numeric(VM); break;
 
             case _jump          : jump(VM, &operand); break;
-            case _jumpIfTrue     : jumpIfTrue(VM, &operand); break;
-            case _jumpIfFalse    : jumpIfFalse(VM, &operand); break;
+            case _jumpIfTrue    : jumpIfTrue(VM, &operand); break;
+            case _jumpIfFalse   : jumpIfFalse(VM, &operand); break;
             
-            case _function      : break;
-            case _call          : break;
-            case _end           : break;
+            case _function      : FuncBody(VM, &operand); break;
+            case _call          : CallFunc(VM, &operand); break;
+            case _return        : ReturnFunc(VM, &operand);  break;
             
             case _read          : break;
             case _print         : print_numeric(VM); break;
@@ -288,7 +466,7 @@ void ExecuteLoop(RuntimeEnv* VM) {
         //     VM->Stack,
         //     VM->StackPointer
         // );
-                 
+        log_vm_step(VM);
         VM->ProgramCounter ++;
     }
 }
@@ -467,14 +645,20 @@ void lessEqual_numeric(RuntimeEnv* VM) {
 
 void jump(RuntimeEnv* VM , Value* value) {
 
-    if (value->type == enum_type_null) {exit(1);}
+    if (value->type == enum_type_null) {
+        printf("no jump value\n");
+        exit(1);
+    }
     VM->ProgramCounter = value->as.number - 1;
 
 }
 
 void jumpIfTrue(RuntimeEnv* VM , Value* value) {
 
-    if (value->type == enum_type_null) {exit(1);}
+    if (value->type == enum_type_null) {
+        printf("no jump value\n");
+        exit(1);
+    }
     Value Check = pop_numeric(VM);
     
     if (!Check.as.number) {return;}
@@ -485,7 +669,10 @@ void jumpIfTrue(RuntimeEnv* VM , Value* value) {
 
 void jumpIfFalse(RuntimeEnv* VM , Value* value) {
 
-    if (value->type == enum_type_null) {exit(1);}
+    if (value->type == enum_type_null) {
+        printf("no jump value\n");
+        exit(1);
+    }
     Value Check = pop_numeric(VM);
     
     if (Check.as.number != 0) {return;}
@@ -494,3 +681,95 @@ void jumpIfFalse(RuntimeEnv* VM , Value* value) {
 
 }
 
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+//■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+int GetFuncIndexByName(RuntimeEnv* VM , char* String) {
+
+    for (int index = 0; index < MAX_FUNC_SLOT; index ++) {
+
+        if (!strcmp(VM->FuncSlot[index].Name, String)) {return index;}
+
+    }
+
+    return -1;
+}
+
+//TODO : NEXT TIME ADD A SAFTY CHECK !!!!!
+void PushFuncCall(RuntimeEnv* VM, Value* value) {
+    int ActualCallStackPointer = (MAX_STACK_SIZE - 1) - VM->CallStackPointer;
+    VM->Stack[ActualCallStackPointer] = *value;
+    VM->CallStackPointer ++;
+}
+
+//TODO : THIS ONE TOO!!!
+Value PopFuncCall(RuntimeEnv* VM) {
+    int ActualCallStackPointer = (MAX_STACK_SIZE) - VM->CallStackPointer;
+    
+    Value ReturnFuncCall = VM->Stack[ActualCallStackPointer];
+
+    Value _NULL;
+    _NULL.type = enum_type_null;
+    VM->Stack[ActualCallStackPointer] = _NULL;
+
+    VM->CallStackPointer --;
+    
+    return ReturnFuncCall;
+}
+
+void CallFunc(RuntimeEnv* VM, Value* FunctionIndex) {
+
+
+    //can collapes into just one call but for now
+    //having a variable stored like this is easier
+    Value CurrentPC = {
+        .type = enum_type_number,
+        .as.number = VM->ProgramCounter
+    };
+
+    //not sure between pass by value or pass by ref
+    // which one is better
+    PushFuncCall(VM, &CurrentPC);
+    jump(VM, FunctionIndex);
+
+}
+
+//I need to make a variable slot for a func frame
+//but for now lets make it usable first
+void FuncBody(RuntimeEnv* VM, Value* FunctionIndex) {
+
+    //TODO : patitioning a variable slots;
+    //can collapes into just one call but for now
+    //having a variable stored like this is easier
+    Value CurrentStackPointer = {
+        .type = enum_type_number,
+        .as.number = VM->StackPointer
+    };
+
+    //not sure between pass by value or pass by ref
+    // which one is better
+    PushFuncCall(VM, &CurrentStackPointer);
+
+    // VM->StackPointer += VM->FuncSlot[(int)FunctionIndex->as.number].VariableAmount;s
+
+}
+
+void ReturnFunc(RuntimeEnv* VM, Value* PopCount) {
+
+    Value PoppedValue[(int)PopCount->as.number];
+
+    for (int count = (int)PopCount->as.number - 1; count >= 0; count--) {  // fix
+        PoppedValue[count] = pop_numeric(VM);
+    }
+
+    Value OriginalStackPointer  = PopFuncCall(VM);
+    Value OriginalProgramCounter = PopFuncCall(VM);
+
+    VM->ProgramCounter = (int)OriginalProgramCounter.as.number;
+    VM->StackPointer   = (int)OriginalStackPointer.as.number;
+
+    for (int count = (int)PopCount->as.number - 1; count >= 0; count--) {  // fix
+        push_numeric(VM, PoppedValue[count]);
+    }
+}

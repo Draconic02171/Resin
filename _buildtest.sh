@@ -19,5 +19,6 @@ sed -i "s/const char StartTime\[\] = \"<set here>\";/const char StartTime[] = \"
 # We use the @ delimiter in sed because the date string contains slashes/spaces
 sed -i "s@const char TimeSpent\[\] = \".*\";@const char TimeSpent[] = \"$now\";@" "$FILE"
 
-gcc $FILE -o _resin_test
-./_resin_test
+gcc -pg $FILE -o test/_resin_test
+test/_resin_test
+# gprof test/_resin_test test/gmon.out > test/profiler.txt
