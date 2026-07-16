@@ -12,17 +12,16 @@ func main() {
 		Runtime.Code(
 			Runtime.Op_Function,
 			[]Runtime.Value{
-				Runtime.NewValue("Combine"),
+				Runtime.NewValue("main"),
 				Runtime.NewValue(2)}, // argument amount, maybe
 			0,
 		),
-		Runtime.Code(Runtime.Op_Add, []Runtime.Value{}, 0),                       // add those 2 arguments
+		Runtime.Code(Runtime.Op_Push, 	[]Runtime.Value{Runtime.NewValue(5)}, 0),
+		Runtime.Code(Runtime.Op_Push, 	[]Runtime.Value{Runtime.NewValue(5)}, 0),
+		Runtime.Code(Runtime.Op_Add, 	[]Runtime.Value{}, 0),                       // add those 2 arguments
+		Runtime.Code(Runtime.Op_Peek, 	[]Runtime.Value{}, 0),
 		Runtime.Code(Runtime.Op_Return, []Runtime.Value{Runtime.NewValue(1)}, 0), //return 1 value
-
-		Runtime.Code(Runtime.Op_Push, []Runtime.Value{Runtime.NewValue(5)}, 0),
-		Runtime.Code(Runtime.Op_Push, []Runtime.Value{Runtime.NewValue(5)}, 0),
-		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Combine")}, 0),
-		Runtime.Code(Runtime.Op_Peek, []Runtime.Value{}, 0),
+		Runtime.Code(Runtime.Op_Return, []Runtime.Value{}, 0),
 	}
 
 	vm := Runtime.InitRuntime()

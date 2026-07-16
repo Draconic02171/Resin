@@ -29,19 +29,21 @@ func InitRuntime() *VM {
 
 	return &VM{
 
-		running:      false,
-		stackPointer: 0,
-		stackSize:    MAXSTACK,
-		stack:        [MAXSTACK]Value{},
+		running:      		false,
+		stackPointer: 		0,
+		stackSize:    		MAXSTACK,
+		stack:        		[MAXSTACK]Value{},
 
-		funcstackPointer: 0,
-		funcstack:        [MAXSTACK]FuncFrame{},
+		funcstackPointer: 	0,
+		funcstack:        	[MAXSTACK]FuncFrame{},
 
 		instructionPointer: 0,
 		programSize:        0,
 		program:            nil,
 
-		memory: make(map[string]Value),
+		memory: 			make(map[string]Value),
+		functions: 			make(map[string]Func),
+
 	}
 
 }
@@ -104,6 +106,26 @@ func (vm *VM) LoadProgram(program []Instruction) error {
 	vm.program = program
 	vm.programSize = uint(len(program))
 
+	for i := range len(vm.program) {
+
+		Operands := vm.program[i].operand
+		
+		if vm.program[i].opcode == Op_Function {
+			if Operands[0].IsNull() || Operands[0]._type != _string_ {
+				return fmt.Errorf("Failed to Compile: function declaration require name as a string literal\r\n")	
+			}
+
+			FuncName := Operands[0]._value.(string)
+			Metadata := Func{
+				name: FuncName,
+				entry: uint(i),
+			}
+
+			vm.functions[FuncName] = Metadata
+
+ 		}
+	}
+
 	return nil
 
 }
@@ -115,6 +137,8 @@ func (vm *VM) Run() error {
 	RuntimeErrorMsg := "Runtime Error!"
 	vm.running = true
 
+	vm.__call__([]Value{NewValue("main")})
+
 	for vm.running {
 
 		if vm.instructionPointer >= vm.programSize {
@@ -125,11 +149,13 @@ func (vm *VM) Run() error {
 			)
 		}
 
+		if vm.funcstackPointer <= 0 {vm.running = false}
+
 		CurrentIns := vm.program[vm.instructionPointer]
 
 		switch CurrentIns.opcode {
 		case Op_Push:
-			Msg = vm.__push__(CurrentIns.GetOperand())
+			Msg = vm.__push__(CurrentIns.operand)
 		case Op_Pop:
 			Msg, _ = vm.__pop__()
 		case Op_Swap:
@@ -137,9 +163,9 @@ func (vm *VM) Run() error {
 		case Op_Dup:
 			Msg = vm.__dup__()
 		case Op_Load:
-			Msg = vm.__load__(CurrentIns.GetOperand())
+			Msg = vm.__load__(CurrentIns.operand)
 		case Op_Store:
-			Msg = vm.__store__(CurrentIns.GetOperand())
+			Msg = vm.__store__(CurrentIns.operand)
 		case Op_Add:
 			Msg = vm.__add__()
 		case Op_Sub:
@@ -160,12 +186,12 @@ func (vm *VM) Run() error {
 			Msg = vm.__moreOrEqual__()
 		case Op_LessOrEqual:
 			Msg = vm.__lessOrEqual__()
-		case Op_Jump: //Msg 	=
+		case Op_Jump: //Msg 
 		case Op_JumpIfTrue:
 		case Op_JumpIfFalse:
 		case Op_Function: //nothing
-		case Op_Call:
-		case Op_Return:
+		case Op_Call: vm.__call__(CurrentIns.operand)
+		case Op_Return: vm.__return__(CurrentIns.operand)
 		case Op_Read:
 		case Op_Print:
 		case Op_Peek:
