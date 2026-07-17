@@ -12,16 +12,29 @@ func main() {
 		Runtime.Code(
 			Runtime.Op_Function,
 			[]Runtime.Value{
-				Runtime.NewValue("main"),
-				Runtime.NewValue(2)}, // argument amount, maybe
+				Runtime.NewValue("Return5"),
+				Runtime.NewValue(0),
+			},
 			0,
 		),
-		Runtime.Code(Runtime.Op_Push, 	[]Runtime.Value{Runtime.NewValue(5)}, 0),
-		Runtime.Code(Runtime.Op_Push, 	[]Runtime.Value{Runtime.NewValue(5)}, 0),
-		Runtime.Code(Runtime.Op_Add, 	[]Runtime.Value{}, 0),                       // add those 2 arguments
-		Runtime.Code(Runtime.Op_Peek, 	[]Runtime.Value{}, 0),
-		Runtime.Code(Runtime.Op_Return, []Runtime.Value{Runtime.NewValue(1)}, 0), //return 1 value
-		Runtime.Code(Runtime.Op_Return, []Runtime.Value{}, 0),
+		Runtime.Code(Runtime.Op_Push, []Runtime.Value{Runtime.NewValue(5)}, 1),
+		Runtime.Code(Runtime.Op_Return, []Runtime.Value{Runtime.NewValue(1)}, 2),
+
+		Runtime.Code(
+			Runtime.Op_Function,
+			[]Runtime.Value{
+				Runtime.NewValue("main"),
+				Runtime.NewValue(0),
+			}, // argument amount, maybe
+			3,
+		),
+		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Retrun5")}, 4),
+		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Return5")}, 5),
+		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Return5")}, 6),
+		// Runtime.Code(Runtime.Op_Add, 	[]Runtime.Value{}, 6),                       // add those 2 arguments
+		Runtime.Code(Runtime.Op_Peek, []Runtime.Value{}, 7),
+		//Runtime.Code(Runtime.Op_Return, []Runtime.Value{Runtime.NewValue(1)}, 0), //return 1 value
+		Runtime.Code(Runtime.Op_Halt, []Runtime.Value{}, 8), //exit program
 	}
 
 	vm := Runtime.InitRuntime()

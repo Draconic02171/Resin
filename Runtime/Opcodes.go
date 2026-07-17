@@ -599,6 +599,7 @@ func (vm *VM) __lessOrEqual__() error {
 func (vm *VM) __call__(operand []Value) error {
 
 	errMsg := "Error: 'call'"
+	//NORMAL ERROR CHECK
 	if len(operand) == 0 || operand[0].IsActuallyNull() {
 		return fmt.Errorf("%s first operand is null\r\n", errMsg)
 	}
@@ -606,6 +607,7 @@ func (vm *VM) __call__(operand []Value) error {
 		return fmt.Errorf("%s operand is not a string\r\n", errMsg)
 	}
 
+	//get the argument
 	FuncName := operand[0]._value.(string)
 	FuncData, success := vm.functions[FuncName]
 
@@ -643,10 +645,32 @@ func (vm *VM) __return__(operand []Value) error {
 		return fmt.Errorf("%s FuncStack is Empty\r\n", errMsg)
 	}
 
+	ReturnArgs := operand[0]._value.(Number)
+
+	if ReturnArgs <= 0 { return nil }
+
+	Args := []Value{}
+	for i := Number(0) ; i < ReturnArgs; i ++ {
+		__value := vm.stack[vm.stackPointer]
+		Args = append(Args, __value)
+	}
+
+	//destroy func frame
 	vm.stackPointer = vm.funcstack[vm.funcstackPointer].LaststackPointer
 	vm.instructionPointer = vm.funcstack[vm.funcstackPointer].LastInstPointer
 	vm.funcstack[vm.funcstackPointer] = FuncFrame{}
 	vm.funcstackPointer--
+
+
+	for i := range int(ReturnArgs) {
+		vm.stack[vm.stackPointer] = Args[i]
+		// fmt.Println(vm.stack[vm.stackPointer])
+	}
+	
+	err := vm.incrementPointer(uint(ReturnArgs))
+	if err != nil {
+		return fmt.Errorf("%s\r\n%s" , errMsg, err.Error())
+	}
 
 	return nil
 }

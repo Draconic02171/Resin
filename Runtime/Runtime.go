@@ -203,6 +203,7 @@ func (vm *VM) Run() error {
 		if Msg != nil {
 			fmt.Printf("%v", Msg)
 		}
+		vm.DumpCore()
 		vm.setInsPointer(vm.getInsPointer() + 1)
 	}
 
