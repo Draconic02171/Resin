@@ -28,17 +28,16 @@ func main() {
 			}, // argument amount, maybe
 			3,
 		),
-		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Retrun5")}, 4),
+		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Return5")}, 4),
 		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Return5")}, 5),
-		Runtime.Code(Runtime.Op_Call, []Runtime.Value{Runtime.NewValue("Return5")}, 6),
-		// Runtime.Code(Runtime.Op_Add, 	[]Runtime.Value{}, 6),                       // add those 2 arguments
+		Runtime.Code(Runtime.Op_Add, []Runtime.Value{}, 6),
 		Runtime.Code(Runtime.Op_Peek, []Runtime.Value{}, 7),
-		//Runtime.Code(Runtime.Op_Return, []Runtime.Value{Runtime.NewValue(1)}, 0), //return 1 value
-		Runtime.Code(Runtime.Op_Halt, []Runtime.Value{}, 8), //exit program
+		Runtime.Code(Runtime.Op_Peek, []Runtime.Value{}, 8),
+		Runtime.Code(Runtime.Op_Halt, []Runtime.Value{}, 9), //exit program
 	}
 
 	vm := Runtime.InitRuntime()
 	vm.LoadProgram(Program)
 	vm.Run()
-	vm.DumpCore()
+	// vm.DumpCore()
 }

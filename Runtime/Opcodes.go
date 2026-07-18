@@ -54,8 +54,9 @@ func (vm *VM) __push__(operand []Value) error {
 	if err != nil {
 		return errors.Join(errors.New(errMsg), err)
 	}
-
-	vm.stack[vm.stackPointer] = operand[0]
+	value := operand[0]
+	vm.stack[vm.stackPointer]._type = value._type
+	vm.stack[vm.stackPointer]._value = value._value
 
 	return nil
 
@@ -679,4 +680,5 @@ func (vm *VM) __peek__() error {
 
 	fmt.Print(vm.stack[vm.stackPointer].GetValue())
 	return nil
+	
 }

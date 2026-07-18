@@ -8,7 +8,7 @@ func (vm *VM) DumpCore() {
 	fmt.Println("===== CORE DUMP =====")
 	fmt.Printf("StackPointer: %d\r\n" , vm.stackPointer)
 	fmt.Printf("InstPointer : %d\r\n" , vm.instructionPointer)
-	for i := range uint(vm.stackPointer) {
-		fmt.Println(vm.stack[i].PrintValue())
+	for i := uint(1); i <= vm.stackPointer; i++ {  
+    	fmt.Println(vm.stack[i].PrintValue())
 	}
 }
